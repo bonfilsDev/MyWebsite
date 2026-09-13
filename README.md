@@ -1,3 +1,4 @@
+ HEAD
 # Stream Pharmacy - Cashier & Sales Management System
 
 A web-based daily reporting system for a pharmacy with role-based access (Admin & Cashier).
@@ -99,3 +100,7 @@ bonfilskamugisha/
 - Total is calculated automatically server-side and client-side as the sum of cash + momo + credit + pos + e-kashi + insurance credit.
 - Unique constraint prevents duplicate reports for the same cashier, date, and shift.
 - Insurance credit in the Sales module is auto-loaded from the same date's insurance records.
+=======
+# MyWebsite
+stream pharmacie project
+ f8e72017fc1b9fded8747d479342304825992a83
