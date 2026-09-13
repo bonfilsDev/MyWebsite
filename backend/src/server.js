@@ -14,7 +14,14 @@ const adminRoutes = require('./routes/admin');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: [
+      "http://localhost:5173",
+      "https://my-website-e7hnlbqr-benyln.vercel.app",
+    ],
+    credentials: true,
+  }));
+  
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
