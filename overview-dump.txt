@@ -1,0 +1,379 @@
+﻿1: import React, { useEffect, useState } from 'react';
+2: import { useNavigate } from 'react-router-dom';
+3: import api from '../../api/client';
+4: import { formatMoney, today } from '../../utils/format';
+5: import { StatCard } from '../../components/ui';
+6: import DownloadButton from '../../components/DownloadButton';
+7: import ThemeToggle from '../../components/ThemeToggle';
+8: import NotificationBell from '../../components/NotificationBell';
+9: import { useAuth } from '../../context/AuthContext';
+10: 
+11: const COLORS = { cash: '#059669', momo: '#7c3aed', credit: '#d97706', pos: '#2563eb', ekashi: '#0d9488' };
+12: const PALETTE = ['#059669', '#7c3aed', '#d97706', '#2563eb', '#0d9488'];
+13: 
+14: function AreaChart({ data }) {
+15:   if (!data || data.length === 0) return <div className="py-16 text-center text-sm text-gray-400">No trend data</div>;
+16:   const w = 640, h = 240, pad = 36;
+17:   const max = Math.max(...data.map((d) => Number(d.total || 0)), 1);
+18:   const stepX = (w - pad * 2) / (data.length - 1 || 1);
+19:   const pts = data.map((d, i) => {
+20:     const x = pad + i * stepX;
+21:     const y = h - pad - (Number(d.total || 0) / max) * (h - pad * 2);
+22:     return { x, y, d };
+23:   });
+24:   const line = pts.map((p) => `${p.x},${p.y}`).join(' ');
+25:   const area = `${pad},${h - pad} ${line} ${w - pad},${h - pad}`;
+26:   return (
+27:     <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-52">
+28:       <defs>
+29:         <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+30:           <stop offset="0%" stopColor="#0d9488" stopOpacity="0.35" />
+31:           <stop offset="100%" stopColor="#0d9488" stopOpacity="0.02" />
+32:         </linearGradient>
+33:       </defs>
+34:       {[0, 0.25, 0.5, 0.75, 1].map((f, i) => {
+35:         const y = pad + f * (h - pad * 2);
+36:         const val = max - max * f;
+37:         return (
+38:           <g key={i}>
+39:             <line x1={pad} x2={w - pad} y1={y} y2={y} stroke="#e5e7eb" strokeWidth="1" className="dark:stroke-gray-700" />
+40:             <text x={pad - 6} y={y + 4} textAnchor="end" fontSize="9" fill="#9ca3af">{formatMoney(val)}</text>
+41:           </g>
+42:         );
+43:       })}
+44:       <polygon points={area} fill="url(#areaGrad)" />
+45:       <polyline points={line} fill="none" stroke="#0d9488" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+46:       {pts.map((p, i) => (
+47:         <g key={i}>
+48:           <circle cx={p.x} cy={p.y} r="3.5" fill="#0d9488" stroke="#fff" strokeWidth="1.5" className="dark:stroke-gray-800" />
+49:           <text x={p.x} y={h - 14} textAnchor="middle" fontSize="9" fill="#9ca3af">{String(p.d.date || '').slice(5)}</text>
+50:         </g>
+51:       ))}
+52:     </svg>
+53:   );
+54: }
+55: 
+56: function Donut({ data }) {
+57:   const segs = [
+58:     ['Cash', data?.cash, COLORS.cash],
+59:     ['Momo', data?.momo, COLORS.momo],
+60:     ['Credit', data?.credit, COLORS.credit],
+61:     ['POS', data?.pos, COLORS.pos],
+62:     ['E-Kashi', data?.ekashi, COLORS.ekashi]
+63:   ];
+64:   const total = segs.reduce((s, [, v]) => s + Number(v || 0), 0);
+65:   if (!total) return <div className="py-16 text-center text-sm text-gray-400">No data</div>;
+66:   const r = 46, c = 2 * Math.PI * r;
+67:   const rendered = segs
+68:     .filter(([, v]) => Number(v || 0) > 0)
+69:     .map(([label, v, color]) => {
+70:       const dash = (Number(v) / total) * c;
+71:       return { label, color, dash, pct: Math.round((Number(v) / total) * 100) };
+72:     });
+73:   let offset = 0;
+74:   const circles = rendered.map((s) => {
+75:     const item = { ...s, offset };
+76:     offset -= s.dash;
+77:     return item;
+78:   });
+79:   return (
+80:     <div className="flex flex-col items-center gap-4">
+81:       <div className="relative w-40 h-40">
+82:         <svg viewBox="0 0 120 120" className="w-40 h-40 -rotate-90">
+83:           <circle cx="60" cy="60" r={r} fill="none" stroke="#e5e7eb" strokeWidth="18" className="dark:stroke-gray-700" />
+84:           {circles.map((s, i) => (
+85:             <circle key={i} cx="60" cy="60" r={r} fill="none" stroke={s.color} strokeWidth="18"
+86:               strokeDasharray={`${s.dash} ${c - s.dash}`} strokeDashoffset={s.offset} />
+87:           ))}
+88:           <g transform="rotate(90 60 60)">
+89:             <text x="60" y="57" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#111827" className="dark:fill-gray-100">{formatMoney(total)}</text>
+90:             <text x="60" y="72" textAnchor="middle" fontSize="7" fill="#6b7280">Total</text>
+91:           </g>
+92:         </svg>
+93:       </div>
+94:       <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
+95:         {circles.map((s, i) => (
+96:           <div key={i} className="flex items-center justify-between text-xs">
+97:             <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+98:               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />{s.label}
+99:             </span>
+100:             <span className="font-semibold text-gray-800 dark:text-gray-100">{s.pct}%</span>
+101:           </div>
+102:         ))}
+103:       </div>
+104:     </div>
+105:   );
+106: }
+107: 
+108: function Progress({ label, value, max, color }) {
+109:   const solid = Number(value || 0) || 0;
+110:   const pct = max && Number(solid) ? Math.round((solid / max) * 100) : 0;
+111:   return (
+112:     <div>
+113:       <div className="flex items-center justify-between mb-1 text-sm">
+114:         <span className="text-gray-600 dark:text-gray-300 truncate pr-2">{label}</span>
+115:         <span className="font-semibold text-gray-800 dark:text-gray-100">{formatMoney(solid)}</span>
+116:       </div>
+117:       <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+118:         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+119:       </div>
+120:     </div>
+121:   );
+122: }
+123: 
+124: export default function AdminOverview() {
+125:   const { user } = useAuth();
+126:   const navigate = useNavigate();
+127:   const [weekly, setWeekly] = useState(null);
+128:   const [daily, setDaily] = useState(null);
+129:   const [trend, setTrend] = useState([]);
+130:   const [reports, setReports] = useState([]);
+131:   const [cashiers, setCashiers] = useState([]);
+132:   const [cashierId, setCashierId] = useState('all');
+133:   const [date, setDate] = useState(today());
+134:   const [deleting, setDeleting] = useState(falsehÃ¶rde);
+135: 
+136:   const d7 = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+137: 
+138:   const load = async () => {
+139:     try {
+140:       const params = {};
+141:       if (cashierId !== 'all') params.cashier_id = cashierId;
+142:       const [weekRes, dayRes, trendRes, reportsRes, cashRes] = await Promise.all([
+143:         api.get('/stats', { params: { type: 'weekly', ...params } }),
+144:         api.get('/stats', { params: { type: 'daily', date, ...params } }),
+145:         api.get('/stats', { params: { type: 'trend', date, ...params } }),
+146:         api.get('/reports', { params: { date_from: d7, date_to: date, ...(cashierId !== 'all' ? { cashier_id: cashierId } : {}) } }),
+147:         api.get('/cashiers')
+148:       ]);
+149:       setWeekly(weekRes.data);
+150:       setDaily(dayRes.data);
+151:       setTrend(trendRes.data.trend || []);
+152:       setReports(Array.isArray(reportsRes.data) ? reportsRes.data : []);
+153:       setCashiers(cashRes.data);
+154:     } catch (e) {
+155:       console.error(e);
+156:     }
+157:   };
+158: 
+159:   useEffect(() => { load(); }, []);
+160:   useEffect(() => { load(); }, [cashierId]);
+161: 
+162:   const perCashier = () => {
+163:     const map = {};
+164:     reports.forEach((r) => {
+165:       const name = r.fullname || `Cashier #${r.cashier_id}`;
+166:       map[name] = (map[name] || 0) + Number(r.total || 0);
+167:     });
+168:     return Object.entries(map).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
+169:   };
+170: 
+171:   const handleDeleteAll = async () => {
+172:     if (!window.confirm('Delete ALL reports, expenses, purchases, cashouts and insurance records? This cannot be undone.')) return;
+173:     setDeleting(true);
+174:     try {
+175:       await api.post('/admin/clear-records');
+176:       alert('All records deleted successfully');
+177:       load();
+178:     } catch (e) {
+179:       alert('Error deleting records');
+180:     } finally {
+181:       setDeleting(false);
+182:     }
+183:   };
+184: 
+185:   const weeklyRows = weekly
+186:     ? [
+187:         ['Range', `${weekly.start} to ${weekly.end}`],
+188:         ['Cash', formatMoney(weekly.cash)],
+189:         ['Momo', formatMoney(weekly.momo)],
+190:         ['Credit', formatMoney(weekly.credit)],
+191:         ['POS', formatMoney(weekly.pos)],
+192:         ['E-Kashi', formatMoney(weekly.ekashi)],
+193:         ['Total', formatMoney(weekly.total)],
+194:         ['Balance', formatMoney(weekly.balance)]
+195:       ]
+196:     : [];
+197:   const dailyRows = daily
+198:     ? [
+199:         ['Cash', formatMoney(daily.cash)],
+200:         ['Momo', formatMoney(daily.momo)],
+201:         ['Credit', formatMoney(daily.credit)],
+202:         ['POS', formatMoney(daily.pos)],
+203:         ['E-Kashi', formatMoney(daily.ekashi)],
+204:         ['Total', formatMoney(daily.total)],
+205:         ['Balance', formatMoney(daily.balance)]
+206:       ]
+207:     : [];
+208:   const summaryTables = [
+209:     { caption: 'Weekly Statistics', columns: ['Metric', 'Value'], rows: weeklyRows },
+210:     { caption: `Daily Summary (${date})`, columns: ['Metric', 'Value'], rows: dailyRows },
+211:     {
+212:       caption: 'Money Flow Trend (last 7 days)',
+213:       columns: ['Date', 'Total'],
+214:       rows: trend.map((t) => [t.date, formatMoney(t.total)])
+215:     },
+216:     {
+217:       caption: 'Cashier Traffic',
+218:       columns: ['Cashier', 'Total'],
+219:       rows: perCashier().map((t) => [t.name, formatMoney(t.total)])
+220:     }
+221:   ];
+222: 
+223:   const traffic = perCashier();
+224:   const trafficMax = Math.max(...traffic.map((t) => t.total), 1);
+225:   const campaigns = [
+226:     { name: 'Momo Cashback Drive', value: weekly?.momo, max: weekly?.total, color: '#7c3aed', icon: 'ðŸ“±' },
+227:     { name: 'Insurance Credit Campaign', value: weekly?.credit, max: weekly?.total, color: '#d97706', icon: 'ðŸ›¡ï¸' },
+228:     { name: 'Cash Loyalty Program', value: weekly?.cash, max: weekly?.total, color: '#059669', icon: 'ðŸ’µ' },
+229:     { name: 'POS Happy Hour', value: weekly?.pos, max: weekly?.total, color: '#2563eb', icon: 'ðŸ’³' },
+230:     { name: 'E-Kashi Week', value: weekly?.ekashi, max: weekly?.total, color: '#0d9488', icon: 'ðŸŒ±' }
+231:   ];
+232: 
+233:   return (
+234:     <div className="space-y-6">
+235:       <div className="bg-gradient-to-r from-teal-700 to-cyan-700 rounded-2xl shadow-lg p-6 text-white">
+236:         <div className="flex flex-wrap items-start justify-between gap-4">
+237:           <div>
+238:             <div className="text-sm text-teal-100">Welcome back, {user?.fullname}</div>
+239:             <h1 className="text-2xl sm:text-3xl font-bold mt-1">Dashboard Overview</h1>
+240:             <p className="text-teal-100 text-sm mt-1">Track revenue flow, payment mix and campaigns at a glance</p>
+241:           </div>
+242:           <div className="flex items-center gap-2 flex-wrap">
+243:             <ThemeToggle />
+244:             <NotificationBell />
+245:             <button onClick={() => navigate('/admin/account')} title="Settings"
+246:               className="p-2 rounded-lg bg-white/15 hover:bg-white/25 transition text-xl">âš™ï¸</button>
+247:             <button onClick={() => navigate('/admin/account')} title="My Profile"
+248:               className="p-2 rounded-lg bg-white/15 hover:bg-white/25 transition text-xl">ðŸ‘¤</button>
+249:             <DownloadButton
+250:               title="Overview Report"
+251:               subtitle="Stream Pharmacy â€” dashboard overview"
+252:               filename="overview-report.pdf"
+253:               tables={summaryTables}
+254:             />
+255:           </div>
+256:         </div>
+257:         <div className="flex flex-wrap gap-2 mt-3 text-xs text-teal-100">
+258:           <span className="px-2 py-1 bg-white/15 rounded-lg">ðŸ“… {date}</span>
+259:           <span className="px-2 py-1 bg-white/15 rounded-lg">ðŸ‘¥ {cashiers.length} cashiers</span>
+260:         </div>
+261:       </div>
+262: 
+263:       <div className="flex flex-wrap gap-4 mb-2 items-end">
+264:         <div>
+265:           <label className="block text-sm font-medium text-gray-600 mb-1">Cashier</label>
+266:           <select value={cashierId} onChange={(e) => setCashierId(e.target.value)}
+267:             className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800">
+268:             <option value="all">All Cashiers</option>
+269:             {cashiers.map((c) => (
+270:               <option key={c.id} value={c.id}>{c.fullname}</option>
+271:             ))}
+272:           </select>
+273:         </div>
+274:         <div>
+275:           <label className="block text-sm font-medium text-gray-600 mb-1">Date</label>
+276:           <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+277:             className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800" />
+278:         </div>
+279:         <button onClick={() => load()} className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg transition">
+280:           â†» Refresh
+281:         </button>
+282:       </div>
+283: 
+284:       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+285:         <StatCard title="Weekly Total" value={formatMoney(weekly?.total)} color="#0d9488" />
+286:         <StatCard title="Weekly Balance" value={formatMoney(weekly?.balance)} color="#9333ea" />
+287:         <StatCard title="Daily Total" value={formatMoney(daily?.total)} color="#2563eb" />
+288:         <StatCard title="Daily Balance" value={formatMoney(daily?.balance)} color="#dc2626" />
+289:       </div>
+290: 
+291:       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+292:         <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+293:           <div className="flex items-center justify-between mb-2">
+294:             <div>
+295:               <h2 className="text-lg font-bold bg-gray-800 dark:text-gray-100">Money Flow</h2>
+296:               <p className="text-xs text-gray-500">Total sales per day â€” last 7 days</p>
+297:             </div>
+298:             <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-200">7 days</span>
+299:           </div>
+300:           <AreaChart data={trend} />
+301:         </div>
+302: 
+303:         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+304:           <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">Payment Mix</h2>
+305:           <p className="text-xs text-gray-500 mb-3">Weekly breakdown</p>
+306:           <Donut data={weekly} />
+307:         </div>
+308: 
+309:         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+310:           <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">Cashier Traffic</h2>
+311:           <p className="text-xs text-gray-500 mb-3">Who brings in the money (last 7 days)</p>
+312:           <div className="space-y-3">
+313:             {traffic.slice(0, 5).map((t, i) => (
+314:               <Progress key={i} label={t.name} value={t.total} max={trafficMax} color={PALETTE[i % 5]} />
+315:             ))}
+316:           </div>
+317:         </div>
+318:       </div>
+319: 
+320:       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+321:         <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+322:           <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">Recent Transactions</h2>
+323:           <p className="text-xs text-gray-500 mb-3">Latest sales records</p>
+324:           <div className="overflow-x-auto">
+325:             <table className="min-w-full text-sm">
+326:               <thead>
+327:                 <tr className="text-left text-xs text-gray-500 border-b border-gray-200 dark:border-gray-700">
+328:                   <th className="pb-2 font-medium">Date</th>
+329:                   <th className="pb-2 font-medium">Cashier</th>
+330:                   <th className="pb-2 font-medium">Shift</th>
+331:                   <th className="pb-2 font-medium text-right">Total</th>
+332:                 </tr>
+333:               </thead>
+334:               <tbody>
+335:                 {reports.slice(0, 7).map((r, i) => (
+336:                   <tr key={i} className="border-b border-gray-100 dark:border-gray-700/50 last:border-0">
+337:                     <td className="py-2 text-gray-600">{r.report_date}</td>
+338:                     <td className="py-2 text-gray-600">{r.fullname}</td>
+339:                     <td className="py-2 text-gray-600">{r.shift_name}</td>
+340:                     <td className="py-2 text-right font-semibold text-gray-800">{formatMoney(r.total)}</td>
+341:                   </tr>
+342:                 ))}
+343:               </tbody>
+344:             </table>
+345:             {reports.length === 0 && <div className="py-6 text-center text-sm text-gray-400">No transactions yet</div>}
+346:           </div>
+347:         </div>
+348: 
+349:         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+350:           <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">Campaigns</h2>
+351:           <p className="text-xs text-gray-500 mb-3">Share of total revenue</p>
+352:           <div className="space-y-3">
+353:             {campaigns.map((c, i) => (
+354:               <div key={i}>
+355:                 <div className="flex items-center justify-between text-sm mb-1">
+356:                   <span className="text-gray-600 dark:text-gray-300">{c.icon} {c.name}</span>
+357:                   <span className="text-xs font-semibold text-gray-500">
+358:                     {weekly?.total ? Math.round((c.value / c.max) * 100) : 0}%
+359:                   </span>
+360:                 </div>
+361:                 <Progress label="" value={c.value} max={c.max} color={c.color} />
+362:               </div>
+363:             ))}
+364:           </div>
+365:         </div>
+366:       </div>
+367: 
+368:       <div className="flex justify-end">
+369:         <button
+370:           onClick={handleDeleteAll}
+371:           disabled={deleting}
+372:           className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition"
+373:         >
+374:           {deleting ? 'Deleting...' : 'ðŸ—‘ Delete All Records'}
+375:         </button>
+376:       </div>
+377:     </div>
+378:   );
+379: }

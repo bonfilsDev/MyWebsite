@@ -1,0 +1,6 @@
+# Built by opencode
+dist/
+node_modules/
+*.log
+.vscode/
+.idea/

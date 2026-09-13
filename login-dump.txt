@@ -1,0 +1,117 @@
+﻿  1: import React, { useState } from 'react';
+  2: import { useNavigate } from 'react-router-dom';
+  3: import { useAuth } from '../context/AuthContext';
+  4: export default function Login() {
+  5:   const { login } = useAuth();
+  6:   const navigate = useNavigate();
+  7:   const [username, setUsername] = useState('');
+  8:   const [password, setPassword] = useState('');
+  9:   const [error, setError] = useState('');
+ 10:   const [loading, setLoading] = useState(false);
+ 11: 
+ 12:   const handleSubmit = async (e) => {
+ 13:     e.preventDefault();
+ 14:     setError('');
+ 15:     setLoading(true);
+ 16:     try {
+ 17:       const data = await login(username, password);
+ 18:       navigate(data.redirect || (data.user.role === 'admin' ? '/admin' : '/cashier'));
+ 19:     } catch (err) {
+ 20:       setError(err.response?.data?.error || 'Network error. Please try again.');
+ 21:     } finally {
+ 22:       setLoading(false);
+ 23:     }
+ 24:   };
+ 25: 
+ 26:   const handleContinueWithEmail = async (e) => {
+ 27:     e.preventDefault();
+ 28:     setError('');
+ 29:     if (!String(username).includes('@')) {
+ 30:       setError('Enter your registered email address to continue with email login');
+ 31:       return;
+ 32:     }
+ 33:     setLoading(true);
+ 34:     try {
+ 35:       const data = await login(username, password);
+ 36:       navigate(data.redirect || (data.user.role === 'admin' ? '/admin' : '/cashier'));
+ 37:     } catch (err) {
+ 38:       setError(err.response?.data?.error || 'Network error. Please try again.');
+ 39:     } finally {
+ 40:       setLoading(false);
+ 41:     }
+ 42:   };
+ 43: 
+ 44:   return (
+ 45:     <div className="min-h-screen relative flex items-center justify-center bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-700">
+ 46:       <div className="absolute top-4 right-4">
+ 47:       </div>
+ 48:       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md dark:bg-gray-800">
+ 49:         <div className="text-center mb-8">
+ 50:           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-teal-600 flex items-center justify-center text-white text-3xl shadow-lg">
+ 51:             ðŸ’Š
+ 52:           </div>
+ 53:           <h1 className="text-2xl font-bold text-gray-800">Stream Pharmacy</h1>
+ 54:           <p className="text-gray-500 text-sm mt-1">Cashier &amp; Sales Management System</p>
+ 55:         </div>
+ 56: 
+ 57:         <form onSubmit={handleSubmit} className="space-y-4">
+ 58:           {error && (
+ 59:             <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-lg">
+ 60:               {error}
+ 61:             </div>
+ 62:           )}
+ 63:           <div>
+ 64:             <label className="block text-sm font-medium text-gray-700 mb-1">Email or Username</label>
+ 65:             <input
+ 66:               type="text"
+ 67:               value={username}
+ 68:               onChange={(e) => setUsername(e.target.value)}
+ 69:               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+ 70:               placeholder="Enter email or username"
+ 71:               required
+ 72:             />
+ 73:           </div>
+ 74:           <div>
+ 75:             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+ 76:             <input
+ 77:               type="password"
+ 78:               value={password}
+ 79:               onChange={(e) => setPassword(e.target.value)}
+ 80:               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+ 81:               placeholder="Enter password"
+ 82:               required
+ 83:             />
+ 84:           </div>
+ 85:           <button
+ 86:             type="submit"
+ 87:             disabled={loading}
+ 88:             className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+ 89:           >
+ 90:             {loading ? 'Signing in...' : 'Sign In'}
+ 91:           </button>
+ 92: 
+ 93:           <div className="flex items-center gap-3 my-1">
+ 94:             <div className="flex-1 h-px bg-gray-200"></div>
+ 95:             <span className="text-xs text-gray-400">or continue with</span>
+ 96:             <div className="flex-1 h-px bg-gray-200"></div>
+ 97:           </div>
+ 98: 
+ 99:           <button
+100:             type="button"
+101:             onClick={handleContinueWithEmail}
+102:             disabled={loading}
+103:             className="w-full py-2.5 border border-teal-300 bg-teal-50 hover:bg-teal-100 text-teal-700 font-semibold rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
+104:           >
+105:             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
+106:               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c5.15 0 8.66-3.6 8.66-8.66 0-.6-.05-1.03-.13-1.48h1.01V9.7h-6.1v1.72h3.82c-.48 2.35-2.39 3.74-4.68 3.74-2.82 0-4.82-2.24-4.82-5.08S9.27 5 12 5c1.35 0 2.58.5 3.49 1.34l1.28-1.28A6.66 6.66 0 0 0 12 2z"/>
+107:             </svg>
+108:             Continue with Email
+109:           </button>
+110:           <p className="text-center text-xs text-gray-400">
+111:             After logging in with your email, a notification is sent to that email.
+112:           </p>
+113:         </form>
+114:       </div>
+115:     </div>
+116:   );
+117: }
