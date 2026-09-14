@@ -29,12 +29,12 @@ export default function Login() {
 
       // Redirect based on role
       if (user.role === 'admin') {
-        navigate('/admin');
+        navigate('/auth/admin');
       } else if (user.role === 'cashier') {
-        navigate('/cashier');
+        navigate('/auth/cashier');
       } else {
         toast.error('Unknown user role');
-        navigate('/login');
+        navigate('/auth/login');
       }
 
     } catch (err) {
@@ -75,12 +75,12 @@ export default function Login() {
 
       // Redirect based on role
       if (user.role === 'admin') {
-        navigate('/admin');
+        navigate('/auth/admin');
       } else if (user.role === 'cashier') {
-        navigate('/cashier');
+        navigate('/auth/cashier');
       } else {
         toast.error('Unknown user role');
-        navigate('/login');
+        navigate('/auth/login');
       }
 
     } catch (err) {
