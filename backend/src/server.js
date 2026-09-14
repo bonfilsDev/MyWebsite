@@ -23,6 +23,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
+      // Allow Postman, mobile apps, server-to-server requests, etc.
       if (!origin) {
         return callback(null, true);
       }
@@ -41,6 +42,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Health check
 app.get("/", (req, res) => {
   res.json({
     name: "Stream Pharmacy API",
@@ -48,6 +50,7 @@ app.get("/", (req, res) => {
   });
 });
 
+// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/cashiers", cashierRoutes);
 app.use("/api/reports", reportRoutes);
@@ -58,6 +61,7 @@ app.use("/api/cashouts", cashoutRoutes);
 app.use("/api/insurance", insuranceRoutes);
 app.use("/api/admin", adminRoutes);
 
+// 404
 app.use((req, res) => {
   res.status(404).json({
     error: "Not found",
@@ -65,15 +69,18 @@ app.use((req, res) => {
   });
 });
 
+// Error handler
 app.use((err, req, res, next) => {
-  console.error(err);
+  console.error("SERVER ERROR:", err);
+
   res.status(500).json({
     error: "Internal server error",
   });
 });
 
+// Railway/Render provides PORT
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Stream Pharmacy API running on port ${PORT}`);
-})
+});
