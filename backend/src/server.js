@@ -17,18 +17,22 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://my-website-e7hnlbqr-benyln.vercel.app",
+  "https://my-website-git-main-benylin.vercel.app",
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests without an origin, such as Postman
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+      if (!origin) {
+        return callback(null, true);
       }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("Blocked by CORS:", origin);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
