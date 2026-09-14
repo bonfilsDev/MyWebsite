@@ -1,7 +1,6 @@
 require("dotenv").config();
 
 const express = require("express");
-const cors = require("cors");
 
 const authRoutes = require("./routes/auth");
 const cashierRoutes = require("./routes/cashiers");
@@ -15,15 +14,18 @@ const adminRoutes = require("./routes/admin");
 
 const app = express();
 
+const cors = require("cors");
+
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://my-website-benylin.vercel.app",
+  "https://my-website-eta-gilt-28.vercel.app",
+  "https://my-website-e7hnlbqr-benyln.vercel.app",
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests without an Origin header
+      // Allow requests from Postman and other tools without an origin
       if (!origin) {
         return callback(null, true);
       }
@@ -32,14 +34,15 @@ app.use(
         return callback(null, true);
       }
 
-      console.log("Blocked by CORS:", origin);
-      return callback(new Error("Not allowed by CORS"));
+      return callback(new Error(`CORS blocked origin: ${origin}`));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+app.options("*", cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
