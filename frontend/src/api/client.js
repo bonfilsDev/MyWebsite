@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = " https://api-node-stream.onrender.com/api ";
+const API_URL = "https://api-node-stream.onrender.com/api";
 
 if (!API_URL) {
   console.error("VITE_API_URL is not configured");
