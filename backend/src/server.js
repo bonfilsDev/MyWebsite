@@ -17,13 +17,13 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://my-website-git-main-benylin.vercel.app",
+  "https://my-website-benylin.vercel.app",
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow Postman, mobile apps, server-to-server requests, etc.
+      // Allow requests without an Origin header
       if (!origin) {
         return callback(null, true);
       }
@@ -36,6 +36,8 @@ app.use(
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
