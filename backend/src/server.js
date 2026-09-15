@@ -11,12 +11,14 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
+  'https://my-website-ee4p9ycnl-benylin.vercel.app',
   'https://my-website-aklpjm0vz-benylin.vercel.app',
   'https://my-website-eta-gilt-28.vercel.app'
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow Postman and requests without an Origin header
     if (!origin) {
       return callback(null, true);
     }
@@ -25,7 +27,8 @@ app.use(cors({
       return callback(null, true);
     }
 
-    return callback(new Error(`CORS blocked origin: ${origin}`));
+    console.error('Blocked CORS origin:', origin);
+    return callback(new Error('Not allowed by CORS'));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
