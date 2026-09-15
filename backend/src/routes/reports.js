@@ -65,17 +65,27 @@ router.get("/", async (req, res) => {
         SUM(cashout_total) AS cashout_total,
         SUM(insurance_total) AS insurance_total,
 
-        SUM(cash_total) AS cash_total,
-        SUM(momo_total) AS momo_total,
-        SUM(credit_total) AS credit_total,
-        SUM(pos_total) AS pos_total,
-        SUM(ekashi_total) AS ekashi_total,
+        SUM(cash_total) AS cash,
+        SUM(momo_total) AS momo,
+        SUM(credit_total) AS credit,
+        SUM(pos_total) AS pos,
+        SUM(ekashi_total) AS ekashi,
+
+        SUM(cash_total)
+          + SUM(momo_total)
+          + SUM(credit_total)
+          + SUM(pos_total)
+          + SUM(ekashi_total) AS total,
+
+        MAX(balance_value) AS balance,
 
         COUNT(*) AS transaction_count
 
       FROM (
 
-        /* Purchases */
+        /* =========================
+           PURCHASES
+        ========================= */
         SELECT
           p.purchase_date AS report_date,
           p.cashier_id,
@@ -92,15 +102,21 @@ router.get("/", async (req, res) => {
           0 AS momo_total,
           0 AS credit_total,
           0 AS pos_total,
-          0 AS ekashi_total
+          0 AS ekashi_total,
+
+          0 AS balance_value
 
         FROM purchases p
         JOIN users u ON u.id = p.cashier_id
         LEFT JOIN shifts s ON s.id = p.shift_id
 
+
         UNION ALL
 
-        /* Expenses */
+
+        /* =========================
+           EXPENSES
+        ========================= */
         SELECT
           e.expense_date AS report_date,
           e.cashier_id,
@@ -117,14 +133,20 @@ router.get("/", async (req, res) => {
           0 AS momo_total,
           0 AS credit_total,
           0 AS pos_total,
-          0 AS ekashi_total
+          0 AS ekashi_total,
+
+          0 AS balance_value
 
         FROM expenses e
         JOIN users u ON u.id = e.cashier_id
 
+
         UNION ALL
 
-        /* Cashouts */
+
+        /* =========================
+           CASHOUTS
+        ========================= */
         SELECT
           c.cashout_date AS report_date,
           c.cashier_id,
@@ -141,14 +163,20 @@ router.get("/", async (req, res) => {
           0 AS momo_total,
           0 AS credit_total,
           0 AS pos_total,
-          0 AS ekashi_total
+          0 AS ekashi_total,
+
+          0 AS balance_value
 
         FROM cashouts c
         JOIN users u ON u.id = c.cashier_id
 
+
         UNION ALL
 
-        /* Insurance records */
+
+        /* =========================
+           INSURANCE
+        ========================= */
         SELECT
           ir.record_date AS report_date,
           ir.cashier_id,
@@ -165,15 +193,21 @@ router.get("/", async (req, res) => {
           0 AS momo_total,
           0 AS credit_total,
           0 AS pos_total,
-          0 AS ekashi_total
+          0 AS ekashi_total,
+
+          0 AS balance_value
 
         FROM insurance_records ir
         JOIN users u ON u.id = ir.cashier_id
         LEFT JOIN shifts s ON s.id = ir.shift_id
 
+
         UNION ALL
 
-        /* Submitted daily reports */
+
+        /* =========================
+           DAILY SALES REPORT
+        ========================= */
         SELECT
           dr.report_date,
           dr.cashier_id,
@@ -190,7 +224,9 @@ router.get("/", async (req, res) => {
           dr.momo AS momo_total,
           dr.credit AS credit_total,
           dr.pos AS pos_total,
-          dr.ekashi AS ekashi_total
+          dr.ekashi AS ekashi_total,
+
+          dr.balance AS balance_value
 
         FROM daily_reports dr
         JOIN users u ON u.id = dr.cashier_id
@@ -227,7 +263,10 @@ router.get("/", async (req, res) => {
   }
 });
 
+
 /*
+  POST /api/reports
+
   Submit a daily report / close a shift
 */
 router.post("/", async (req, res) => {
@@ -314,6 +353,7 @@ router.post("/", async (req, res) => {
       success: true,
       id: result.insertId,
       total,
+      balance: Number(balance),
     });
   } catch (error) {
     console.error("Submit report error:", error);
