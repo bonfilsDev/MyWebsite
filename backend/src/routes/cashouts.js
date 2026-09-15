@@ -16,7 +16,8 @@ router.get('/', async (req, res) => {
         c.id,
         c.cashier_id,
         c.amount,
-        c.reason,
+        c.account,
+        c.reason AS person_or_reason,
         c.cashout_date,
         u.fullname AS cashier_name
       FROM cashouts c
@@ -73,9 +74,9 @@ router.post('/', async (req, res) => {
     const {
       cashout_date = new Date().toISOString().slice(0, 10),
       amount,
-      reason = '',
+      account = '',
       person_or_reason = '',
-      account = ''
+      reason = ''
     } = req.body || {};
 
     if (!amount || Number(amount) <= 0) {
@@ -84,20 +85,20 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Support old frontend field names while saving to the real `reason` column
-    const finalReason =
-      reason || person_or_reason || account || '';
+    // Use person_or_reason first, with reason as a fallback
+    const finalReason = person_or_reason || reason || '';
 
     const [result] = await pool.query(
       `
       INSERT INTO cashouts
-        (cashier_id, cashout_date, amount, reason)
-      VALUES (?, ?, ?, ?)
+        (cashier_id, cashout_date, amount, account, reason)
+      VALUES (?, ?, ?, ?, ?)
       `,
       [
         cashierId,
         cashout_date,
         Number(amount),
+        account,
         finalReason
       ]
     );
@@ -133,7 +134,8 @@ router.delete('/:id', async (req, res) => {
     let query = 'DELETE FROM cashouts WHERE id = ?';
     const params = [id];
 
-    // Admin can delete any cashout; cashier can delete only their own
+    // Admin can delete any cashout
+    // Cashier can delete only their own cashout
     if (!isAdmin) {
       query += ' AND cashier_id = ?';
       params.push(cashierId);
