@@ -11,14 +11,14 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
+  'https://my-website-git-main-benylin.vercel.app',
   'https://my-website-ee4p9ycnl-benylin.vercel.app',
   'https://my-website-aklpjm0vz-benylin.vercel.app',
-  'https://my-website-eta-gilt-28.vercel.app'
+  'https://my-website-eta-gilt-28-benylin.vercel.app'
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow Postman and requests without an Origin header
     if (!origin) {
       return callback(null, true);
     }
