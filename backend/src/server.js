@@ -4,7 +4,6 @@ const express = require('express');
 const cors = require('cors');
 
 
-const reportRoutes = require('./routes/reports');
 const authRoutes = require('./routes/auth');
 const insuranceRoutes = require('./routes/insurance');
 const adminRoutes = require('./routes/admin');
@@ -53,7 +52,6 @@ app.get('/', (req, res) => {
 });
 
 // API routes
-app.use('/api/reports', reportRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/admin', adminRoutes);
