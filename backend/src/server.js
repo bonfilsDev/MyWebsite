@@ -5,6 +5,13 @@ const cors = require('cors');
 
 const authRoutes = require('./routes/auth');
 const insuranceRoutes = require('./routes/insurance');
+const adminRoutes = require('./routes/admin');
+const cashierRoutes = require('./routes/cashiers');
+const cashoutRoutes = require('./routes/cashouts');
+const expenseRoutes = require('./routes/expenses');
+const purchaseRoutes = require('./routes/purchases');
+const reportRoutes = require('./routes/reports');
+const statsRoutes = require('./routes/stats');
 
 const app = express();
 
@@ -14,7 +21,7 @@ const allowedOrigins = [
   'https://my-website-git-main-benylin.vercel.app',
   'https://my-website-ee4p9ycnl-benylin.vercel.app',
   'https://my-website-aklpjm0vz-benylin.vercel.app',
-  'https://my-website-eta-gilt-28-benylin.vercel.app'
+  'https://my-website-eta-gilt-28.vercel.app'
 ];
 
 app.use(cors({
@@ -43,8 +50,16 @@ app.get('/', (req, res) => {
   });
 });
 
+// API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/insurance', insuranceRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/cashiers', cashierRoutes);
+app.use('/api/cashouts', cashoutRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/purchases', purchaseRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/stats', statsRoutes);
 
 const PORT = process.env.PORT || 5000;
 
