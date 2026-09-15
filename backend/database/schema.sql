@@ -129,24 +129,24 @@ CREATE TABLE IF NOT EXISTS expenses (
     FOREIGN KEY (cashier_id) REFERENCES users(id)
 );
 
-CREATE TABLE IF NOT EXISTS purchases (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    cashier_id INT NOT NULL,
-    purchase_date DATE NOT NULL,
-    shift_id INT NULL,
-    payment_type ENUM('cash', 'credit') NOT NULL DEFAULT 'cash',
-    amount DECIMAL(12,2) DEFAULT 0.00,
-    invoice_number VARCHAR(100),
-    supplier_name VARCHAR(150),
-    status ENUM('unpaid', 'paid') NOT NULL DEFAULT 'unpaid',
-    datepaid DATETIME DEFAULT NULL,
-    amount_paid DECIMAL(12,2) DEFAULT 0.00,
-    place VARCHAR(150) DEFAULT '',
-    remain DECIMAL(12,2) DEFAULT 0.00,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (cashier_id) REFERENCES users(id),
-    FOREIGN KEY (shift_id) REFERENCES shifts(id)
-);
+    CREATE TABLE IF NOT EXISTS purchases (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        cashier_id INT NOT NULL,
+        purchase_date DATE NOT NULL,
+        shift_id INT NULL,
+        payment_type ENUM('cash', 'credit') NOT NULL DEFAULT 'cash',
+        amount DECIMAL(12,2) DEFAULT 0.00,
+        invoice_number VARCHAR(100),
+        supplier_name VARCHAR(150),
+        status ENUM('unpaid', 'paid') NOT NULL DEFAULT 'unpaid',
+        datepaid DATETIME DEFAULT NULL,
+        amount_paid DECIMAL(12,2) DEFAULT 0.00,
+        place VARCHAR(150) DEFAULT '',
+        remain DECIMAL(12,2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (cashier_id) REFERENCES users(id),
+        FOREIGN KEY (shift_id) REFERENCES shifts(id)
+    );
 
 -- Idempotent migration for existing databases: add status + datepaid columns if missing
 DROP PROCEDURE IF EXISTS add_purchase_columns;

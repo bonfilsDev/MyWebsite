@@ -1,51 +1,245 @@
-const express = require('express');
-const pool = require('../config/db');
-const { authenticate } = require('../middleware/auth');
+const express = require("express");
+const pool = require("../config/db");
+const { authenticate } = require("../middleware/auth");
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/', async (req, res) => {
+/*
+  GET /api/reports
+
+  Combines:
+  - purchases
+  - expenses
+  - cashouts
+  - insurance_records
+  - daily_reports
+
+  Admin sees all cashiers.
+  Cashier sees only their own records.
+*/
+router.get("/", async (req, res) => {
   try {
-    const isAdmin = req.user.role === 'admin';
-    let query =
-      'SELECT r.*, u.fullname, s.name AS shift_name FROM daily_reports r ' +
-      'JOIN users u ON u.id = r.cashier_id JOIN shifts s ON s.id = r.shift_id WHERE 1=1';
+    const isAdmin = req.user.role === "admin";
+
     const params = [];
 
-    if (!isAdmin) {
-      query += ' AND r.cashier_id = ?';
+    let cashierFilter = "";
+
+    if (isAdmin) {
+      if (
+        req.query.cashier_id &&
+        req.query.cashier_id !== "all"
+      ) {
+        cashierFilter = " AND cashier_id = ?";
+        params.push(req.query.cashier_id);
+      }
+    } else {
+      cashierFilter = " AND cashier_id = ?";
       params.push(req.user.id);
-    } else if (req.query.cashier_id && req.query.cashier_id !== 'all') {
-      query += ' AND r.cashier_id = ?';
-      params.push(req.query.cashier_id);
     }
 
+    let dateFilter = "";
+
     if (req.query.date_from) {
-      query += ' AND r.report_date >= ?';
+      dateFilter += " AND report_date >= ?";
       params.push(req.query.date_from);
     }
+
     if (req.query.date_to) {
-      query += ' AND r.report_date <= ?';
+      dateFilter += " AND report_date <= ?";
       params.push(req.query.date_to);
     }
 
-    query += ' ORDER BY r.report_date DESC, r.shift_id';
+    const query = `
+      SELECT
+        report_date,
+        cashier_id,
+        cashier_name,
+        shift_id,
+        shift_name,
+
+        SUM(purchase_total) AS purchase_total,
+        SUM(expense_total) AS expense_total,
+        SUM(cashout_total) AS cashout_total,
+        SUM(insurance_total) AS insurance_total,
+
+        SUM(cash_total) AS cash_total,
+        SUM(momo_total) AS momo_total,
+        SUM(credit_total) AS credit_total,
+        SUM(pos_total) AS pos_total,
+        SUM(ekashi_total) AS ekashi_total,
+
+        COUNT(*) AS transaction_count
+
+      FROM (
+
+        /* Purchases */
+        SELECT
+          p.purchase_date AS report_date,
+          p.cashier_id,
+          u.fullname AS cashier_name,
+          p.shift_id,
+          s.name AS shift_name,
+
+          p.amount AS purchase_total,
+          0 AS expense_total,
+          0 AS cashout_total,
+          0 AS insurance_total,
+
+          0 AS cash_total,
+          0 AS momo_total,
+          0 AS credit_total,
+          0 AS pos_total,
+          0 AS ekashi_total
+
+        FROM purchases p
+        JOIN users u ON u.id = p.cashier_id
+        LEFT JOIN shifts s ON s.id = p.shift_id
+
+        UNION ALL
+
+        /* Expenses */
+        SELECT
+          e.expense_date AS report_date,
+          e.cashier_id,
+          u.fullname AS cashier_name,
+          NULL AS shift_id,
+          NULL AS shift_name,
+
+          0 AS purchase_total,
+          e.amount AS expense_total,
+          0 AS cashout_total,
+          0 AS insurance_total,
+
+          0 AS cash_total,
+          0 AS momo_total,
+          0 AS credit_total,
+          0 AS pos_total,
+          0 AS ekashi_total
+
+        FROM expenses e
+        JOIN users u ON u.id = e.cashier_id
+
+        UNION ALL
+
+        /* Cashouts */
+        SELECT
+          c.cashout_date AS report_date,
+          c.cashier_id,
+          u.fullname AS cashier_name,
+          NULL AS shift_id,
+          NULL AS shift_name,
+
+          0 AS purchase_total,
+          0 AS expense_total,
+          c.amount AS cashout_total,
+          0 AS insurance_total,
+
+          0 AS cash_total,
+          0 AS momo_total,
+          0 AS credit_total,
+          0 AS pos_total,
+          0 AS ekashi_total
+
+        FROM cashouts c
+        JOIN users u ON u.id = c.cashier_id
+
+        UNION ALL
+
+        /* Insurance records */
+        SELECT
+          ir.record_date AS report_date,
+          ir.cashier_id,
+          u.fullname AS cashier_name,
+          ir.shift_id,
+          s.name AS shift_name,
+
+          0 AS purchase_total,
+          0 AS expense_total,
+          0 AS cashout_total,
+          ir.amount AS insurance_total,
+
+          0 AS cash_total,
+          0 AS momo_total,
+          0 AS credit_total,
+          0 AS pos_total,
+          0 AS ekashi_total
+
+        FROM insurance_records ir
+        JOIN users u ON u.id = ir.cashier_id
+        LEFT JOIN shifts s ON s.id = ir.shift_id
+
+        UNION ALL
+
+        /* Submitted daily reports */
+        SELECT
+          dr.report_date,
+          dr.cashier_id,
+          u.fullname AS cashier_name,
+          dr.shift_id,
+          s.name AS shift_name,
+
+          0 AS purchase_total,
+          0 AS expense_total,
+          0 AS cashout_total,
+          0 AS insurance_total,
+
+          dr.cash AS cash_total,
+          dr.momo AS momo_total,
+          dr.credit AS credit_total,
+          dr.pos AS pos_total,
+          dr.ekashi AS ekashi_total
+
+        FROM daily_reports dr
+        JOIN users u ON u.id = dr.cashier_id
+        LEFT JOIN shifts s ON s.id = dr.shift_id
+
+      ) AS combined_records
+
+      WHERE 1 = 1
+      ${cashierFilter}
+      ${dateFilter}
+
+      GROUP BY
+        report_date,
+        cashier_id,
+        cashier_name,
+        shift_id,
+        shift_name
+
+      ORDER BY
+        report_date DESC,
+        cashier_id ASC,
+        shift_id ASC
+    `;
+
     const [rows] = await pool.query(query, params);
+
     res.json(rows);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Server error' });
+  } catch (error) {
+    console.error("Reports error:", error);
+
+    res.status(500).json({
+      error: "Failed to load reports",
+    });
   }
 });
 
-router.post('/', async (req, res) => {
+/*
+  Submit a daily report / close a shift
+*/
+router.post("/", async (req, res) => {
   try {
-    if (req.user.role === 'admin') {
-      return res.status(403).json({ error: 'Cashier only action' });
+    if (req.user.role === "admin") {
+      return res.status(403).json({
+        error: "Cashier only action",
+      });
     }
+
     const cashierId = req.user.id;
+
     const {
       report_date = new Date().toISOString().slice(0, 10),
       shift_id,
@@ -54,33 +248,79 @@ router.post('/', async (req, res) => {
       credit = 0,
       pos = 0,
       ekashi = 0,
-      balance = 0
+      balance = 0,
     } = req.body || {};
 
     if (!shift_id) {
-      return res.status(400).json({ error: 'Shift is required' });
+      return res.status(400).json({
+        error: "Shift is required",
+      });
     }
 
     const [existing] = await pool.query(
-      'SELECT id FROM daily_reports WHERE report_date = ? AND shift_id = ?',
-      [report_date, shift_id]
+      `
+      SELECT id
+      FROM daily_reports
+      WHERE report_date = ?
+        AND shift_id = ?
+        AND cashier_id = ?
+      `,
+      [report_date, shift_id, cashierId]
     );
+
     if (existing.length) {
-      return res.status(400).json({ error: 'This shift has already ended and was submitted for this date' });
+      return res.status(400).json({
+        error: "This shift has already been submitted for this date",
+      });
     }
 
-    const total = Number(cash) + Number(momo) + Number(credit) + Number(pos) + Number(ekashi);
+    const total =
+      Number(cash) +
+      Number(momo) +
+      Number(credit) +
+      Number(pos) +
+      Number(ekashi);
 
     const [result] = await pool.query(
-      `INSERT INTO daily_reports
-        (cashier_id, report_date, shift_id, cash, momo, credit, pos, ekashi, balance)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [cashierId, report_date, shift_id, cash, momo, credit, pos, ekashi, balance]
+      `
+      INSERT INTO daily_reports
+      (
+        cashier_id,
+        report_date,
+        shift_id,
+        cash,
+        momo,
+        credit,
+        pos,
+        ekashi,
+        balance
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        cashierId,
+        report_date,
+        shift_id,
+        cash,
+        momo,
+        credit,
+        pos,
+        ekashi,
+        balance,
+      ]
     );
-    res.json({ success: true, id: result.insertId, total });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Server error' });
+
+    res.json({
+      success: true,
+      id: result.insertId,
+      total,
+    });
+  } catch (error) {
+    console.error("Submit report error:", error);
+
+    res.status(500).json({
+      error: "Failed to submit report",
+    });
   }
 });
 
