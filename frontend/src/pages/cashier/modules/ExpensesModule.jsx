@@ -12,13 +12,18 @@ export default function ExpensesModule() {
   const [error, setError] = useState('');
 
   const load = async () => {
-    try {
-      const { data } = await api.get('/expenses');
-      setExpenses(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  try {
+    const { data } = await api.get('/expenses');
+    setExpenses(Array.isArray(data) ? data : []);
+  } catch (e) {
+    console.error('EXPENSE LOAD ERROR:', e);
+    setError(
+      e.response?.data?.error ||
+      e.message ||
+      'Unable to load expenses from the server'
+    );
+  }
+};
 
   useEffect(() => { load(); }, []);
 

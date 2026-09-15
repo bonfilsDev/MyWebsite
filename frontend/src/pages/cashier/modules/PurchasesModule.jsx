@@ -28,20 +28,30 @@ export default function PurchasesModule() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [payDrafts, setPayDrafts] = useState({});
 
-  const load = async () => {
-    try {
-      const params = {};
-      if (search.trim()) params.search = search.trim();
-      if (dateFilter) params.date = dateFilter;
-      if (shiftFilter) params.shift_id = shiftFilter;
-      if (statusFilter !== 'all') params.status = statusFilter;
-      const { data } = await api.get('/purchases', { params });
-      setPurchases(data);
-      setPayDrafts({});
-    } catch (e) {
-      console.error(e);
-    }
-  };
+const load = async () => {
+  try {
+    const params = {};
+
+    if (search.trim()) params.search = search.trim();
+    if (dateFilter) params.date = dateFilter;
+    if (shiftFilter) params.shift_id = shiftFilter;
+    if (statusFilter !== 'all') params.status = statusFilter;
+
+    const { data } = await api.get('/purchases', { params });
+
+    setPurchases(Array.isArray(data) ? data : []);
+    setPayDrafts({});
+    setError('');
+  } catch (e) {
+    console.error('PURCHASE LOAD ERROR:', e);
+
+    setError(
+      e.response?.data?.error ||
+      e.message ||
+      'Unable to load purchases from the server'
+    );
+  }
+};
 
   useEffect(() => { load(); }, []);
 

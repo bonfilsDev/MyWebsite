@@ -36,8 +36,14 @@ export default function InsuranceModule() {
       setSummary(summaryRes.data.summary || []);
       setGrandTotal(Number(summaryRes.data.grand_total) || 0);
     } catch (e) {
-      console.error(e);
-    }
+  console.error('INSURANCE LOAD ERROR:', e);
+
+  setError(
+    e.response?.data?.error ||
+    e.message ||
+    'Unable to load insurance records from the server'
+  );
+}
   };
 
   useEffect(() => { loadAll(); }, [date, shiftId]);

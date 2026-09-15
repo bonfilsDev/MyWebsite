@@ -38,10 +38,24 @@ export default function ReportModule() {
         cashouts: cashRes.data || []
       });
     } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+  console.error('REPORT LOAD ERROR:', e);
+
+  setData({
+    reports: [],
+    expenses: [],
+    insurance: { records: [], total: 0 },
+    purchases: [],
+    cashouts: []
+  });
+
+  alert(
+    e.response?.data?.error ||
+    e.message ||
+    'Unable to load report data from the server'
+  );
+} finally {
+  setLoading(false);
+}
   };
 
   useEffect(() => { load(); }, [date]);

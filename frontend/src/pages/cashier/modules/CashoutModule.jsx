@@ -12,13 +12,18 @@ export default function CashoutModule() {
   const [error, setError] = useState('');
 
   const load = async () => {
-    try {
-      const { data } = await api.get('/cashouts');
-      setCashouts(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  try {
+    const { data } = await api.get('/cashouts');
+    setCashouts(Array.isArray(data) ? data : []);
+  } catch (e) {
+    console.error('CASHOUT LOAD ERROR:', e);
+    setError(
+      e.response?.data?.error ||
+      e.message ||
+      'Unable to load cashouts from the server'
+    );
+  }
+};
 
   useEffect(() => { load(); }, []);
 
